@@ -1,6 +1,8 @@
 package com.tiktokhelper;
 
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
@@ -21,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "TikTokHelper";
     
     private Button btnStart, btnStop, btnSearch, btnOpenUrl;
-    private CheckBox cbLike, cbComment, cbFollow, cbReply, cbWarmUp;
+    private CheckBox cbLike, cbComment, cbFollow, cbReply, cbWarmUp, cbFloat;
     private SeekBar sbLikeChance, sbCommentChance, sbFollowChance, sbReplyChance;
     private EditText etComments, etReplies, etKeyword, etUrl;
     private TextView tvStatus, tvLikeChance, tvCommentChance, tvFollowChance, tvReplyChance;
@@ -50,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
         cbFollow = findViewById(R.id.cb_follow);
         cbReply = findViewById(R.id.cb_reply);
         cbWarmUp = findViewById(R.id.cb_warmup);
+        cbFloat = findViewById(R.id.cb_float);
         
         sbLikeChance = findViewById(R.id.sb_like_chance);
         sbCommentChance = findViewById(R.id.sb_comment_chance);
@@ -150,6 +153,41 @@ public class MainActivity extends AppCompatActivity {
             // 养号模式下禁用无关功能开关，无需手动取消勾选
             updateFeatureControls(isChecked);
         });
+        
+        // 悬浮窗开关
+        cbFloat.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            getSharedPreferences("prefs", MODE_PRIVATE).edit().putBoolean("float_enabled", isChecked).apply();
+            if (isChecked) {
+                // 检查悬浮窗权限
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                    Toast.makeText(this, "需要悬浮窗权限，请在系统设置中开启", Toast.LENGTH_LONG).show();
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                    // 等待用户授权后 onResume 再启动
+                    buttonView.setChecked(false);
+                    return;
+                }
+                startFloatingWindow();
+            } else {
+                stopFloatingWindow();
+            }
+        });
+    }
+    
+    private void startFloatingWindow() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "需要悬浮窗权限", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, FloatingWindowService.class);
+        startService(intent);
+        Toast.makeText(this, "悬浮窗已开启", Toast.LENGTH_SHORT).show();
+    }
+    
+    private void stopFloatingWindow() {
+        stopService(new Intent(this, FloatingWindowService.class));
+        Toast.makeText(this, "悬浮窗已关闭", Toast.LENGTH_SHORT).show();
     }
     
     /**
@@ -326,8 +364,35 @@ public class MainActivity extends AppCompatActivity {
         cbReply.setChecked(AutoService.replyCommentEnabled);
         cbWarmUp.setChecked(AutoService.warmUpMode);
         
+        // 悬浮窗开关状态（有权限且服务运行中则勾选）
+        boolean floatPref = getSharedPreferences("prefs", MODE_PRIVATE).getBoolean("float_enabled", false);
+        boolean hasOverlayPerm = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
+        cbFloat.setChecked(floatPref && hasOverlayPerm);
+        
+        // 之前勾选过且权限正常但服务未运行 → 自动重启悬浮窗（如进程被系统回收后）
+        if (floatPref && hasOverlayPerm && !isServiceRunning(FloatingWindowService.class)) {
+            startService(new Intent(this, FloatingWindowService.class));
+        }
+        
         // 养号模式下同步禁用功能开关
         updateFeatureControls(AutoService.warmUpMode);
+    }
+    
+    private boolean isFloatingWindowRunning() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            return false;
+        }
+        return getSharedPreferences("prefs", MODE_PRIVATE).getBoolean("float_enabled", false);
+    }
+    
+    private boolean isServiceRunning(Class<?> serviceClass) {
+        android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        for (android.app.ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
     
     @Override
