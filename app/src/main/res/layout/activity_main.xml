@@ -1,156 +1,342 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
     android:background="#1a1a2e">
 
-    <!-- 标题 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TikTok 自动化工具"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="#e94560"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="20dp" />
-
-    <!-- 状态 -->
-    <TextView
-        android:id="@+id/tv_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="状态: 已停止 🔴"
-        android:textSize="16sp"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="20dp" />
-
-    <!-- 功能开关 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <CheckBox
-            android:id="@+id/cb_like"
-            android:layout_width="0dp"
+        <!-- 标题 -->
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="自动点赞"
-            android:textColor="#ffffff"
-            android:checked="true" />
+            android:text="TikTok 自动化工具"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#e94560"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp" />
 
-        <CheckBox
-            android:id="@+id/cb_comment"
-            android:layout_width="0dp"
+        <!-- 状态 -->
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="自动评论"
+            android:text="状态: 已停止 🔴"
+            android:textSize="16sp"
             android:textColor="#ffffff"
-            android:checked="true" />
-    </LinearLayout>
+            android:layout_marginBottom="16dp" />
 
-    <!-- 点赞概率 -->
-    <TextView
-        android:id="@+id/tv_like_chance"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="点赞概率: 70%"
-        android:textColor="#cccccc"
-        android:layout_marginBottom="4dp" />
+        <!-- 功能开关 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
 
-    <SeekBar
-        android:id="@+id/sb_like_chance"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="100"
-        android:progress="70"
-        android:layout_marginBottom="16dp" />
+            <CheckBox
+                android:id="@+id/cb_like"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="点赞"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                android:checked="true" />
 
-    <!-- 评论概率 -->
-    <TextView
-        android:id="@+id/tv_comment_chance"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="评论概率: 20%"
-        android:textColor="#cccccc"
-        android:layout_marginBottom="4dp" />
+            <CheckBox
+                android:id="@+id/cb_comment"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="评论"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                android:checked="true" />
 
-    <SeekBar
-        android:id="@+id/sb_comment_chance"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:max="100"
-        android:progress="20"
-        android:layout_marginBottom="16dp" />
+            <CheckBox
+                android:id="@+id/cb_follow"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="关注"
+                android:textColor="#ffffff"
+                android:textSize="12sp" />
+        </LinearLayout>
 
-    <!-- 评论内容 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="引流评论内容（每行一条）:"
-        android:textColor="#cccccc"
-        android:layout_marginBottom="8dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
 
-    <EditText
-        android:id="@+id/et_comments"
-        android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:background="#16213e"
-        android:textColor="#ffffff"
-        android:textSize="12sp"
-        android:gravity="top"
-        android:padding="8dp"
-        android:inputType="textMultiLine"
-        android:layout_marginBottom="20dp" />
+            <CheckBox
+                android:id="@+id/cb_reply"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="回复子评论"
+                android:textColor="#ffffff"
+                android:textSize="12sp" />
 
-    <!-- 控制按钮 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="12dp">
+            <CheckBox
+                android:id="@+id/cb_warmup"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="养号模式"
+                android:textColor="#ffa500"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 概率设置 -->
+        <TextView
+            android:id="@+id/tv_like_chance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="点赞概率: 70%"
+            android:textColor="#cccccc"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/sb_like_chance"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:max="100"
+            android:progress="70"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_comment_chance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="评论概率: 20%"
+            android:textColor="#cccccc"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/sb_comment_chance"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:max="100"
+            android:progress="20"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_follow_chance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="关注概率: 10%"
+            android:textColor="#cccccc"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/sb_follow_chance"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:max="100"
+            android:progress="10"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_reply_chance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="回复概率: 30%"
+            android:textColor="#cccccc"
+            android:textSize="12sp" />
+
+        <SeekBar
+            android:id="@+id/sb_reply_chance"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:max="100"
+            android:progress="30"
+            android:layout_marginBottom="12dp" />
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#333333"
+            android:layout_marginBottom="12dp" />
+
+        <!-- 关键词搜索 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔍 关键词搜索评论"
+            android:textColor="#e94560"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <EditText
+                android:id="@+id/et_keyword"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:background="#16213e"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                android:hint="输入关键词"
+                android:textColorHint="#666666"
+                android:padding="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_search"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="搜索评论"
+                android:backgroundTint="#e94560"
+                android:textColor="#ffffff"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- 链接评论 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔗 链接直接评论"
+            android:textColor="#e94560"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <EditText
+                android:id="@+id/et_url"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:background="#16213e"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                android:hint="粘贴TikTok视频链接"
+                android:textColorHint="#666666"
+                android:padding="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_open_url"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="打开评论"
+                android:backgroundTint="#533483"
+                android:textColor="#ffffff"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- 分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#333333"
+            android:layout_marginBottom="12dp" />
+
+        <!-- 评论内容 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📝 引流评论内容"
+            android:textColor="#cccccc"
+            android:textSize="12sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/et_comments"
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:background="#16213e"
+            android:textColor="#ffffff"
+            android:textSize="11sp"
+            android:gravity="top"
+            android:padding="8dp"
+            android:inputType="textMultiLine"
+            android:layout_marginBottom="12dp" />
+
+        <!-- 回复评论内容 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💬 子评论回复内容"
+            android:textColor="#cccccc"
+            android:textSize="12sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/et_replies"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:background="#16213e"
+            android:textColor="#ffffff"
+            android:textSize="11sp"
+            android:gravity="top"
+            android:padding="8dp"
+            android:inputType="textMultiLine"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 控制按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <Button
+                android:id="@+id/btn_start"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="▶ 启动"
+                android:backgroundTint="#e94560"
+                android:textColor="#ffffff"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_stop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="⏹ 停止"
+                android:backgroundTint="#533483"
+                android:textColor="#ffffff"
+                android:enabled="false" />
+        </LinearLayout>
 
         <Button
-            android:id="@+id/btn_start"
-            android:layout_width="0dp"
+            android:id="@+id/btn_open_tiktok"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="▶ 启动"
-            android:backgroundTint="#e94560"
-            android:textColor="#ffffff"
-            android:layout_marginEnd="8dp" />
+            android:text="📱 打开 TikTok"
+            android:backgroundTint="#0f3460"
+            android:textColor="#ffffff" />
 
-        <Button
-            android:id="@+id/btn_stop"
-            android:layout_width="0dp"
+        <!-- 使用说明 -->
+        <TextView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="⏹ 停止"
-            android:backgroundTint="#533483"
-            android:textColor="#ffffff"
-            android:enabled="false" />
+            android:text="使用说明:\n1. 开启无障碍服务\n2. 打开 TikTok 停在首页\n3. 选择功能模式\n4. 点击启动开始自动化\n\n养号模式: 只点赞浏览不评论，模拟真实用户\n关键词搜索: 自动搜索并评论相关视频\n链接评论: 粘贴TikTok视频链接直接评论"
+            android:textSize="10sp"
+            android:textColor="#888888"
+            android:layout_marginTop="16dp"
+            android:lineSpacingExtra="4dp" />
+
     </LinearLayout>
-
-    <Button
-        android:id="@+id/btn_open_tiktok"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="📱 打开 TikTok"
-        android:backgroundTint="#0f3460"
-        android:textColor="#ffffff" />
-
-    <!-- 使用说明 -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="使用说明:\n1. 开启无障碍服务\n2. 打开 TikTok 停在首页\n3. 配置评论内容和概率\n4. 点击启动开始自动化"
-        android:textSize="11sp"
-        android:textColor="#888888"
-        android:layout_marginTop="20dp"
-        android:lineSpacingExtra="4dp" />
-
-</LinearLayout>
+</ScrollView>
