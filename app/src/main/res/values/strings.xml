@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TikTok Helper</string>
+    <string name="service_description">TikTok 自动化辅助工具，用于自动点赞和评论引流</string>
+</resources>
