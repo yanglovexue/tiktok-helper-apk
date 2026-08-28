@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -88,13 +89,8 @@ public class MainActivity extends AppCompatActivity {
         tvFollowChance = findViewById(R.id.tv_follow_chance);
         tvReplyChance = findViewById(R.id.tv_reply_chance);
         
-        // 启动按钮
+        // 启动按钮 - 直接启动，不检查无障碍服务
         btnStart.setOnClickListener(v -> {
-            if (!isAccessibilityEnabled()) {
-                Toast.makeText(this, "请先开启无障碍服务", Toast.LENGTH_SHORT).show();
-                openAccessibilitySettings();
-                return;
-            }
             startAutomation();
         });
         
