@@ -223,18 +223,20 @@ public class AutoService extends AccessibilityService {
         
         // 使用养号模式概率：只点赞、关注或观看，不评论、不回复
         if (action < warmUpLikeChance) {
-            // 45% 点赞
+            // 45% 点赞：点赞后停留数秒再滑走，模拟真人看视频节奏
             performLike(rootNode);
+            sleep(5000 + random.nextInt(6000));  // 停留 5-11 秒
         } else if (action < warmUpLikeChance + warmUpFollowChance) {
-            // 8% 关注
+            // 8% 关注：关注后同样停留
             performFollow(rootNode);
+            sleep(5000 + random.nextInt(6000));  // 停留 5-11 秒
         } else {
             // 47% 只是观看（完整看完，模拟真人）
             sleep(getRandomWatchTime());
         }
         
-        // 随机滑动：85% 看完滑走，15% 停留不动（更真实）
-        if (scrollEnabled && random.nextInt(100) < 85) {
+        // 看完后滑动：75% 滑走，25% 停留不动（真人不会每看一个就滑）
+        if (scrollEnabled && random.nextInt(100) < 75) {
             sleep(1000);
             performScroll();
         }
