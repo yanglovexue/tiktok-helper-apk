@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -15,20 +17,19 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * TikTok 全功能自动化服务
- * 功能：关键词搜索评论、链接评论、子评论回复、自动养号
+ * TikTok 全功能自动化服务 - 优化版
+ * 功能：智能评论、回复子评论、养号、主页引导、反检测
  */
 public class AutoService extends AccessibilityService {
 
     private static final String TAG = "TikTokHelper";
     private static final String[] TIKTOK_PACKAGES = {
-        "com.zhiliaoapp.musically",  // TikTok global
-        "com.ss.android.ugc.trill",   // TikTok some regions
-        "com.ss.android.ugc.aweme"    // Douyin/China
+        "com.zhiliaoapp.musically",
+        "com.ss.android.ugc.trill",
+        "com.ss.android.ugc.aweme"
     };
-    private static final String TIKTOK_PACKAGE = TIKTOK_PACKAGES[0]; // Default for compatibility
+    private static final String TIKTOK_PACKAGE = TIKTOK_PACKAGES[0];
     
-    // 单例
     private static AutoService instance;
     public static AutoService getInstance() {
         return instance;
@@ -38,36 +39,48 @@ public class AutoService extends AccessibilityService {
     public static boolean isRunning = false;
     public static boolean likeEnabled = true;
     public static boolean commentEnabled = true;
-    public static boolean scrollEnabled = true;
     public static boolean followEnabled = false;
-    public static boolean replyCommentEnabled = false;
+    public static boolean replyCommentEnabled = true;
     public static boolean warmUpMode = false;
+    public static boolean smartReply = true;
     
-    // ============ 概率设置 ============
-    public static int likeChance = 70;
-    public static int commentChance = 20;
-    public static int followChance = 10;
-    public static int replyChance = 30;
+    // ============ 概率设置（优化值）============
+    public static int likeChance = 60;        // 60% 点赞
+    public static int commentChance = 15;     // 15% 评论（降低频率防检测）
+    public static int followChance = 5;       // 5% 关注
+    public static int replyChance = 25;       // 25% 回复
+    
+    // ============ 延迟设置（防检测）============
+    public static int minDelay = 3000;        // 最小延迟 3秒
+    public static int maxDelay = 8000;        // 最大延迟 8秒
+    public static int watchMinTime = 2000;    // 最少观看 2秒
+    public static int watchMaxTime = 6000;    // 最多观看 6秒
     
     // ============ 评论内容 ============
     public static List<String> commentList = new ArrayList<>();
     public static List<String> replyList = new ArrayList<>();
+    public static String profileUsername = "";  // 用于主页引导
     
-    // ============ 搜索关键词 ============
+    // ============ 搜索 ============
     public static String searchKeyword = "";
     public static String targetVideoUrl = "";
     
     // ============ 状态 ============
     private Random random = new Random();
     private int videoCount = 0;
+    private int totalComments = 0;
+    private int totalReplies = 0;
     private long lastActionTime = 0;
+    private long sessionStartTime = 0;
+    private Handler mainHandler = new Handler(Looper.getMainLooper());
     
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        sessionStartTime = System.currentTimeMillis();
         Log.d(TAG, "服务已连接");
-        initComments();
+        initDefaultComments();
     }
     
     @Override
@@ -75,8 +88,10 @@ public class AutoService extends AccessibilityService {
         if (!isRunning) return;
         if (event.getPackageName() == null || !isTikTokPackage(event.getPackageName().toString())) return;
         
+        // 反检测：随机延迟
         long now = System.currentTimeMillis();
-        if (now - lastActionTime < 2000) return;
+        int delay = getRandomDelay();
+        if (now - lastActionTime < delay) return;
         
         AccessibilityNodeInfo rootNode = getRootInActiveWindow();
         if (rootNode == null) return;
@@ -90,46 +105,46 @@ public class AutoService extends AccessibilityService {
         rootNode.recycle();
     }
     
-    private boolean isTikTokPackage(String pkg) {
-        for (String tiktokPkg : TIKTOK_PACKAGES) {
-            if (tiktokPkg.equals(pkg)) return true;
-        }
-        return false;
-    }
-    
     /**
-     * 执行自动化操作
+     * 执行自动化操作 - 优化版
      */
     private void performActions(AccessibilityNodeInfo rootNode) {
-        // 养号模式：只点赞和浏览，不评论
+        // 养号模式：只点赞和浏览
         if (warmUpMode) {
             performWarmUp(rootNode);
             return;
         }
         
-        // 正常模式
-        if (likeEnabled && random.nextInt(100) < likeChance) {
+        // 智能决策：根据视频内容决定操作
+        int action = random.nextInt(100);
+        
+        // 点赞 (60%)
+        if (likeEnabled && action < likeChance) {
             if (performLike(rootNode)) {
                 lastActionTime = System.currentTimeMillis();
                 return;
             }
         }
         
-        if (followEnabled && random.nextInt(100) < followChance) {
+        // 关注 (5%)
+        if (followEnabled && action >= likeChance && action < likeChance + followChance) {
             if (performFollow(rootNode)) {
                 lastActionTime = System.currentTimeMillis();
                 return;
             }
         }
         
-        if (replyCommentEnabled && random.nextInt(100) < replyChance) {
-            if (performSmartReply(rootNode)) {
+        // 回复子评论 (25%)
+        if (replyCommentEnabled && action >= likeChance + followChance && 
+            action < likeChance + followChance + replyChance) {
+            if (smartReply ? performSmartReply(rootNode) : performReplyComment(rootNode)) {
                 lastActionTime = System.currentTimeMillis();
                 return;
             }
         }
         
-        if (commentEnabled && random.nextInt(100) < commentChance) {
+        // 评论 (15%)
+        if (commentEnabled && action >= likeChance + followChance + replyChance) {
             if (performComment(rootNode)) {
                 lastActionTime = System.currentTimeMillis();
                 return;
@@ -138,21 +153,28 @@ public class AutoService extends AccessibilityService {
     }
     
     /**
-     * 养号模式：模拟真实用户浏览
+     * 养号模式 - 模拟真实用户
      */
     private void performWarmUp(AccessibilityNodeInfo rootNode) {
-        // 随机点赞
-        if (random.nextInt(100) < 30) {
+        int action = random.nextInt(100);
+        
+        // 30% 点赞
+        if (action < 30) {
             performLike(rootNode);
         }
-        
-        // 随机关注
-        if (random.nextInt(100) < 5) {
+        // 5% 关注
+        else if (action < 35) {
             performFollow(rootNode);
         }
+        // 65% 只是观看
+        else {
+            // 模拟观看时间
+            sleep(getRandomWatchTime());
+        }
         
-        // 正常滑动
-        if (scrollEnabled) {
+        // 随机滑动
+        if (scrollEnabled && random.nextInt(100) < 70) {
+            sleep(1000);
             performScroll();
         }
     }
@@ -161,8 +183,9 @@ public class AutoService extends AccessibilityService {
      * 执行点赞
      */
     private boolean performLike(AccessibilityNodeInfo rootNode) {
+        // 方法1：双击屏幕
         performDoubleClick();
-        Log.d(TAG, "执行双击点赞");
+        Log.d(TAG, "点赞成功");
         return true;
     }
     
@@ -170,28 +193,75 @@ public class AutoService extends AccessibilityService {
      * 执行关注
      */
     private boolean performFollow(AccessibilityNodeInfo rootNode) {
-        AccessibilityNodeInfo followBtn = findNodeByText(rootNode, "Follow");
-        if (followBtn == null) {
-            followBtn = findNodeByDesc(rootNode, "Follow");
-        }
+        AccessibilityNodeInfo followBtn = findNodeByDesc(rootNode, "Follow");
+        if (followBtn == null) followBtn = findNodeByDesc(rootNode, "关注");
         if (followBtn != null) {
             followBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             followBtn.recycle();
-            Log.d(TAG, "执行关注");
+            Log.d(TAG, "关注成功");
             return true;
         }
         return false;
     }
     
     /**
-     * 执行智能评论回复 - 读取评论内容并生成相关回复
+     * 执行评论 - 带主页引导
+     */
+    private boolean performComment(AccessibilityNodeInfo rootNode) {
+        AccessibilityNodeInfo commentBtn = findNodeByDesc(rootNode, "Comment");
+        if (commentBtn == null) commentBtn = findNodeByDesc(rootNode, "评论");
+        if (commentBtn == null) return false;
+        
+        commentBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        commentBtn.recycle();
+        
+        sleep(1500);
+        
+        AccessibilityNodeInfo newRoot = getRootInActiveWindow();
+        if (newRoot == null) return false;
+        
+        AccessibilityNodeInfo inputBox = findNodeByClass(newRoot, "android.widget.EditText");
+        if (inputBox == null) {
+            newRoot.recycle();
+            return false;
+        }
+        
+        // 生成带主页引导的评论
+        String comment = generateOptimizedComment();
+        Bundle args = new Bundle();
+        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, comment);
+        inputBox.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+        inputBox.recycle();
+        
+        sleep(800);
+        
+        // 发送
+        AccessibilityNodeInfo sendRoot = getRootInActiveWindow();
+        if (sendRoot != null) {
+            AccessibilityNodeInfo sendBtn = findNodeByText(sendRoot, "Send");
+            if (sendBtn == null) sendBtn = findNodeByDesc(sendRoot, "Send");
+            if (sendBtn == null) sendBtn = findNodeByText(sendRoot, "发送");
+            if (sendBtn != null) {
+                sendBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                sendBtn.recycle();
+                totalComments++;
+                Log.d(TAG, "评论成功 [" + totalComments + "]: " + comment);
+            }
+            sendRoot.recycle();
+        }
+        
+        sleep(500);
+        performGlobalAction(GLOBAL_ACTION_BACK);
+        
+        return true;
+    }
+    
+    /**
+     * 执行智能评论回复
      */
     private boolean performSmartReply(AccessibilityNodeInfo rootNode) {
-        // 先打开评论
         AccessibilityNodeInfo commentBtn = findNodeByDesc(rootNode, "Comment");
-        if (commentBtn == null) {
-            commentBtn = findNodeById(rootNode, TIKTOK_PACKAGE + ":id/comment");
-        }
+        if (commentBtn == null) commentBtn = findNodeByDesc(rootNode, "评论");
         if (commentBtn == null) return false;
         
         commentBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
@@ -199,22 +269,20 @@ public class AutoService extends AccessibilityService {
         
         sleep(2000);
         
-        // 获取评论列表
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) return false;
         
-        // 读取所有评论内容
+        // 读取评论内容
         List<String> comments = extractComments(root);
         
-        // 选择一条评论进行回复
         if (!comments.isEmpty()) {
-            // 随机选择一条评论
+            // 选择一条评论
             String targetComment = comments.get(random.nextInt(comments.size()));
             
             // 生成智能回复
-            String reply = generateSmartReply(targetComment);
+            String reply = generateContextualReply(targetComment);
             
-            // 找到回复按钮并点击
+            // 点击回复按钮
             AccessibilityNodeInfo replyBtn = findNodeByText(root, "Reply");
             if (replyBtn == null) replyBtn = findNodeByText(root, "回复");
             
@@ -241,9 +309,12 @@ public class AutoService extends AccessibilityService {
                         if (sendRoot != null) {
                             AccessibilityNodeInfo sendBtn = findNodeByText(sendRoot, "Send");
                             if (sendBtn == null) sendBtn = findNodeByDesc(sendRoot, "Send");
+                            if (sendBtn == null) sendBtn = findNodeByText(sendRoot, "发送");
                             if (sendBtn != null) {
                                 sendBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
                                 sendBtn.recycle();
+                                totalReplies++;
+                                Log.d(TAG, "回复成功 [" + totalReplies + "]: " + reply + " <- " + targetComment);
                             }
                             sendRoot.recycle();
                         }
@@ -253,8 +324,7 @@ public class AutoService extends AccessibilityService {
                 
                 sleep(500);
                 performGlobalAction(GLOBAL_ACTION_BACK);
-                
-                Log.d(TAG, "智能回复: " + reply + " <- " + targetComment);
+                root.recycle();
                 return true;
             }
         }
@@ -262,6 +332,13 @@ public class AutoService extends AccessibilityService {
         performGlobalAction(GLOBAL_ACTION_BACK);
         root.recycle();
         return false;
+    }
+    
+    /**
+     * 执行普通回复
+     */
+    private boolean performReplyComment(AccessibilityNodeInfo rootNode) {
+        return performSmartReply(rootNode);
     }
     
     /**
@@ -276,346 +353,108 @@ public class AutoService extends AccessibilityService {
     private void extractCommentsRecursive(AccessibilityNodeInfo node, List<String> comments) {
         if (node == null) return;
         
-        // 检查是否是评论文本节点
-        if (node.getClassName() != null && 
-            (node.getClassName().toString().contains("TextView") || 
-             node.getClassName().toString().contains("1BYa"))) {
-            CharSequence text = node.getText();
-            if (text != null && text.length() > 3 && text.length() < 200) {
-                comments.add(text.toString());
+        if (node.getClassName() != null) {
+            String className = node.getClassName().toString();
+            if (className.contains("TextView") && !className.contains("Button")) {
+                CharSequence text = node.getText();
+                if (text != null && text.length() > 3 && text.length() < 200) {
+                    comments.add(text.toString());
+                }
             }
         }
         
-        // 递归子节点
         for (int i = 0; i < node.getChildCount(); i++) {
             extractCommentsRecursive(node.getChild(i), comments);
         }
     }
     
     /**
-     * 根据评论内容生成智能回复
+     * 根据评论内容生成上下文相关回复
      */
-    private String generateSmartReply(String comment) {
-        String lowerComment = comment.toLowerCase();
+    private String generateContextualReply(String comment) {
+        String lower = comment.toLowerCase();
         
         // 价格相关
-        if (lowerComment.contains("price") || lowerComment.contains("cost") || 
-            lowerComment.contains("how much") || lowerComment.contains("多少钱")) {
-            return "DM me for the best price! Way cheaper than retail";
+        if (lower.contains("price") || lower.contains("cost") || lower.contains("how much") || 
+            lower.contains("多少钱") || lower.contains("价格")) {
+            String[] replies = {
+                "DM me for the best price! 🔥",
+                "Way cheaper than retail, DM me!",
+                "I got mine for cheap, check my profile"
+            };
+            return replies[random.nextInt(replies.length)];
         }
         
-        // 购买相关
-        if (lowerComment.contains("where") || lowerComment.contains("buy") || 
-            lowerComment.contains("get") || lowerComment.contains("link")) {
-            return "I got mine for cheap, DM me I'll share the link!";
+        // 购买/链接相关
+        if (lower.contains("where") || lower.contains("buy") || lower.contains("get") || 
+            lower.contains("link") || lower.contains("哪里买") || lower.contains("链接")) {
+            String[] replies = {
+                "DM me I'll share the link!",
+                "Check my profile for the link 👆",
+                "I have the link, follow me!"
+            };
+            return replies[random.nextInt(replies.length)];
         }
         
         // 好看/喜欢
-        if (lowerComment.contains("love") || lowerComment.contains("nice") || 
-            lowerComment.contains("cute") || lowerComment.contains("fire") ||
-            lowerComment.contains("amazing") || lowerComment.contains("beautiful")) {
-            return "Right?! Check my profile for more finds";
+        if (lower.contains("love") || lower.contains("nice") || lower.contains("cute") || 
+            lower.contains("fire") || lower.contains("amazing") || lower.contains("beautiful") ||
+            lower.contains("好看") || lower.contains("喜欢")) {
+            String[] replies = {
+                "Right?! Check my profile for more! 🔥",
+                "Same taste! More on my page",
+                "Thanks! Follow me for similar finds"
+            };
+            return replies[random.nextInt(replies.length)];
         }
         
-        // 品牌相关
-        if (lowerComment.contains("brand") || lowerComment.contains("original") || 
-            lowerComment.contains("fake") || lowerComment.contains("real")) {
-            return "High quality stuff, DM me for details";
+        // 品牌/真假相关
+        if (lower.contains("brand") || lower.contains("original") || lower.contains("fake") || 
+            lower.contains("real") || lower.contains("正品") || lower.contains("仿牌")) {
+            String[] replies = {
+                "High quality stuff, DM me for details",
+                "Check my profile for more info!",
+                "Quality is great, follow me for finds"
+            };
+            return replies[random.nextInt(replies.length)];
         }
         
-        // 默认回复 + 引导主页
+        // 默认回复 + 主页引导
         String[] defaultReplies = {
             "Check my profile for more! 🔥",
             "I have similar stuff, follow me!",
             "DM me for the link! Check my page too",
             "Same taste! More on my profile",
-            "Thanks! Follow me for more finds"
+            "Thanks! Follow me for more finds",
+            "Great choice! See my profile for more 👆"
         };
         
         return defaultReplies[random.nextInt(defaultReplies.length)];
     }
     
     /**
-     * 执行评论 - 带主页引导
+     * 生成优化评论 - 带主页引导
      */
-    private boolean performComment(AccessibilityNodeInfo rootNode) {
-        AccessibilityNodeInfo commentBtn = findNodeByDesc(rootNode, "Comment");
-        if (commentBtn == null) {
-            commentBtn = findNodeById(rootNode, TIKTOK_PACKAGE + ":id/comment");
-        }
-        if (commentBtn == null) return false;
-        
-        commentBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-        commentBtn.recycle();
-        
-        sleep(1500);
-        
-        AccessibilityNodeInfo newRoot = getRootInActiveWindow();
-        if (newRoot == null) return false;
-        
-        AccessibilityNodeInfo inputBox = findNodeByClass(newRoot, "android.widget.EditText");
-        if (inputBox == null) {
-            newRoot.recycle();
-            return false;
+    private String generateOptimizedComment() {
+        // 如果有自定义评论，50% 使用自定义，50% 使用引导评论
+        if (!commentList.isEmpty() && random.nextBoolean()) {
+            return commentList.get(random.nextInt(commentList.size()));
         }
         
-        // 生成带主页引导的评论
-        String comment = generateCommentWithProfileCTA();
-        Bundle args = new Bundle();
-        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, comment);
-        inputBox.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-        inputBox.recycle();
-        
-        sleep(800);
-        
-        AccessibilityNodeInfo sendRoot = getRootInActiveWindow();
-        if (sendRoot != null) {
-            AccessibilityNodeInfo sendBtn = findNodeByText(sendRoot, "Send");
-            if (sendBtn == null) sendBtn = findNodeByDesc(sendRoot, "Send");
-            if (sendBtn != null) {
-                sendBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                sendBtn.recycle();
-            }
-            sendRoot.recycle();
-        }
-        
-        sleep(500);
-        performGlobalAction(GLOBAL_ACTION_BACK);
-        
-        Log.d(TAG, "评论: " + comment);
-        return true;
-    }
-    
-    /**
-     * 生成带主页引导的评论
-     */
-    private String generateCommentWithProfileCTA() {
-        String[] ctaPhrases = {
+        // 引导评论
+        String[] ctaComments = {
             "Check my profile for more! 🔥",
             "More on my page, follow me!",
             "DM me + check my profile",
             "I post finds daily, follow me!",
-            "See my profile for similar stuff"
+            "See my profile for similar stuff",
+            "Follow me for more! 👆",
+            "Link in my bio! Check it out",
+            "Similar stuff on my page 🔥"
         };
         
-        if (commentList.isEmpty()) {
-            return ctaPhrases[random.nextInt(ctaPhrases.length)];
-        }
-        
-        // 50% 概率使用自定义评论，50% 概率使用引导评论
-        if (random.nextBoolean()) {
-            return commentList.get(random.nextInt(commentList.size()));
-        } else {
-            return ctaPhrases[random.nextInt(ctaPhrases.length)];
-        }
+        return ctaComments[random.nextInt(ctaComments.length)];
     }
-    
-    /**
-     * 执行子评论回复
-     */
-    private boolean performReplyComment(AccessibilityNodeInfo rootNode) {
-        // 先打开评论
-        AccessibilityNodeInfo commentBtn = findNodeByDesc(rootNode, "Comment");
-        if (commentBtn == null) {
-            commentBtn = findNodeById(rootNode, TIKTOK_PACKAGE + ":id/comment");
-        }
-        if (commentBtn == null) return false;
-        
-        commentBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-        commentBtn.recycle();
-        
-        sleep(1500);
-        
-        // 查找评论列表中的回复按钮
-        AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null) return false;
-        
-        // 查找 "Reply" 或 "回复" 按钮
-        AccessibilityNodeInfo replyBtn = findNodeByText(root, "Reply");
-        if (replyBtn == null) {
-            replyBtn = findNodeByText(root, "回复");
-        }
-        if (replyBtn == null) {
-            // 尝试查找包含 "reply" 的节点
-            replyBtn = findNodeContainingText(root, "reply");
-        }
-        
-        if (replyBtn == null) {
-            root.recycle();
-            performGlobalAction(GLOBAL_ACTION_BACK);
-            return false;
-        }
-        
-        // 点击回复按钮
-        replyBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-        replyBtn.recycle();
-        
-        sleep(1000);
-        
-        // 输入回复内容
-        AccessibilityNodeInfo inputRoot = getRootInActiveWindow();
-        if (inputRoot == null) return false;
-        
-        AccessibilityNodeInfo inputBox = findNodeByClass(inputRoot, "android.widget.EditText");
-        if (inputBox == null) {
-            inputRoot.recycle();
-            return false;
-        }
-        
-        String reply = replyList.isEmpty() ? "Nice!" : replyList.get(random.nextInt(replyList.size()));
-        Bundle args = new Bundle();
-        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, reply);
-        inputBox.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-        inputBox.recycle();
-        
-        sleep(800);
-        
-        // 发送
-        AccessibilityNodeInfo sendRoot = getRootInActiveWindow();
-        if (sendRoot != null) {
-            AccessibilityNodeInfo sendBtn = findNodeByText(sendRoot, "Send");
-            if (sendBtn == null) sendBtn = findNodeByDesc(sendRoot, "Send");
-            if (sendBtn != null) {
-                sendBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                sendBtn.recycle();
-            }
-            sendRoot.recycle();
-        }
-        
-        sleep(500);
-        performGlobalAction(GLOBAL_ACTION_BACK);
-        sleep(300);
-        performGlobalAction(GLOBAL_ACTION_BACK);
-        
-        Log.d(TAG, "回复子评论: " + reply);
-        return true;
-    }
-    
-    /**
-     * 关键词搜索并评论
-     */
-    public void searchAndComment(String keyword) {
-        if (!isRunning) return;
-        
-        new Thread(() -> {
-            try {
-                // 点击搜索按钮
-                AccessibilityNodeInfo root = getRootInActiveWindow();
-                if (root == null) return;
-                
-                AccessibilityNodeInfo searchBtn = findNodeByDesc(root, "Search");
-                if (searchBtn == null) {
-                    searchBtn = findNodeById(root, TIKTOK_PACKAGE + ":id/search");
-                }
-                if (searchBtn == null) {
-                    root.recycle();
-                    return;
-                }
-                
-                searchBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                searchBtn.recycle();
-                
-                sleep(1000);
-                
-                // 输入关键词
-                AccessibilityNodeInfo inputRoot = getRootInActiveWindow();
-                if (inputRoot == null) return;
-                
-                AccessibilityNodeInfo searchInput = findNodeByClass(inputRoot, "android.widget.EditText");
-                if (searchInput == null) {
-                    inputRoot.recycle();
-                    return;
-                }
-                
-                Bundle args = new Bundle();
-                args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, keyword);
-                searchInput.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-                searchInput.recycle();
-                
-                sleep(500);
-                
-                // 点击搜索
-                AccessibilityNodeInfo searchActionRoot = getRootInActiveWindow();
-                if (searchActionRoot != null) {
-                    AccessibilityNodeInfo searchAction = findNodeByText(searchActionRoot, "Search");
-                    if (searchAction == null) searchAction = findNodeByDesc(searchActionRoot, "Search");
-                    if (searchAction != null) {
-                        searchAction.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                        searchAction.recycle();
-                    }
-                    searchActionRoot.recycle();
-                }
-                
-                sleep(2000);
-                
-                // 点击第一个搜索结果
-                AccessibilityNodeInfo resultRoot = getRootInActiveWindow();
-                if (resultRoot != null) {
-                    // 查找视频列表并点击第一个
-                    AccessibilityNodeInfo firstVideo = findFirstVideo(resultRoot);
-                    if (firstVideo != null) {
-                        firstVideo.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                        firstVideo.recycle();
-                        sleep(2000);
-                        
-                        // 执行评论
-                        AccessibilityNodeInfo videoRoot = getRootInActiveWindow();
-                        if (videoRoot != null) {
-                            performComment(videoRoot);
-                            videoRoot.recycle();
-                        }
-                    }
-                    resultRoot.recycle();
-                }
-                
-            } catch (Exception e) {
-                Log.e(TAG, "搜索评论失败: " + e.getMessage());
-            }
-        }).start();
-    }
-    
-    /**
-     * 通过链接打开视频并评论
-     */
-    public void openUrlAndComment(String url) {
-        if (!isRunning) return;
-        
-        new Thread(() -> {
-            try {
-                // 使用 Intent 打开链接
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(android.net.Uri.parse(url));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                
-                // 尝试设置 TikTok 包名
-                intent.setPackage("com.zhiliaoapp.musically");
-                
-                startActivity(intent);
-                
-                sleep(3000);
-                
-                // 执行评论
-                AccessibilityNodeInfo root = getRootInActiveWindow();
-                if (root != null) {
-                    performComment(root);
-                    root.recycle();
-                }
-                
-            } catch (Exception e) {
-                Log.e(TAG, "链接评论失败: " + e.getMessage());
-                // 尝试用浏览器打开
-                try {
-                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
-                    browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(browserIntent);
-                } catch (Exception ex) {
-                    Log.e(TAG, "浏览器打开也失败: " + ex.getMessage());
-                }
-            }
-        }).start();
-    }
-    
-    // ============ 工具方法 ============
     
     /**
      * 执行滑动
@@ -624,17 +463,18 @@ public class AutoService extends AccessibilityService {
         int width = getResources().getDisplayMetrics().widthPixels;
         int height = getResources().getDisplayMetrics().heightPixels;
         
-        int startX = width / 2;
-        int startY = (int) (height * 0.7);
-        int endY = (int) (height * 0.3);
+        int startX = width / 2 + random.nextInt(100) - 50;  // 随机偏移
+        int startY = (int) (height * 0.7) + random.nextInt(50);
+        int endY = (int) (height * 0.3) + random.nextInt(50);
         
         Path swipePath = new Path();
         swipePath.moveTo(startX, startY);
         swipePath.lineTo(startX, endY);
         
         GestureDescription.Builder builder = new GestureDescription.Builder();
+        int duration = 200 + random.nextInt(200);  // 随机滑动速度
         GestureDescription.StrokeDescription stroke = 
-            new GestureDescription.StrokeDescription(swipePath, 0, 300, false);
+            new GestureDescription.StrokeDescription(swipePath, 0, duration, false);
         builder.addStroke(stroke);
         
         dispatchGesture(builder.build(), new GestureResultCallback() {
@@ -652,8 +492,8 @@ public class AutoService extends AccessibilityService {
         int width = getResources().getDisplayMetrics().widthPixels;
         int height = getResources().getDisplayMetrics().heightPixels;
         
-        int x = width / 2;
-        int y = height / 2;
+        int x = width / 2 + random.nextInt(60) - 30;  // 随机偏移
+        int y = height / 2 + random.nextInt(60) - 30;
         
         Path clickPath = new Path();
         clickPath.moveTo(x, y);
@@ -663,7 +503,7 @@ public class AutoService extends AccessibilityService {
         GestureDescription.StrokeDescription click1 = 
             new GestureDescription.StrokeDescription(clickPath, 0, 50, true);
         GestureDescription.StrokeDescription click2 = 
-            new GestureDescription.StrokeDescription(clickPath, 100, 50, false);
+            new GestureDescription.StrokeDescription(clickPath, 80, 50, false);
         
         builder.addStroke(click1);
         builder.addStroke(click2);
@@ -677,15 +517,10 @@ public class AutoService extends AccessibilityService {
         List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByText(desc);
         for (AccessibilityNodeInfo node : nodes) {
             if (node.getContentDescription() != null && 
-                node.getContentDescription().toString().contains(desc)) {
+                node.getContentDescription().toString().toLowerCase().contains(desc.toLowerCase())) {
                 return node;
             }
         }
-        return nodes.isEmpty() ? null : nodes.get(0);
-    }
-    
-    private AccessibilityNodeInfo findNodeById(AccessibilityNodeInfo root, String id) {
-        List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByViewId(id);
         return nodes.isEmpty() ? null : nodes.get(0);
     }
     
@@ -721,36 +556,19 @@ public class AutoService extends AccessibilityService {
         return null;
     }
     
-    private AccessibilityNodeInfo findNodeContainingText(AccessibilityNodeInfo root, String text) {
-        for (int i = 0; i < root.getChildCount(); i++) {
-            AccessibilityNodeInfo child = root.getChild(i);
-            if (child == null) continue;
-            
-            if (child.getText() != null && 
-                child.getText().toString().toLowerCase().contains(text.toLowerCase())) {
-                return child;
-            }
-            
-            AccessibilityNodeInfo result = findNodeContainingText(child, text);
-            if (result != null) return result;
+    private boolean isTikTokPackage(String pkg) {
+        for (String tiktokPkg : TIKTOK_PACKAGES) {
+            if (tiktokPkg.equals(pkg)) return true;
         }
-        return null;
+        return false;
     }
     
-    private AccessibilityNodeInfo findFirstVideo(AccessibilityNodeInfo root) {
-        // 查找可点击的视频节点
-        for (int i = 0; i < root.getChildCount(); i++) {
-            AccessibilityNodeInfo child = root.getChild(i);
-            if (child == null) continue;
-            
-            if (child.isClickable() && child.isVisibleToUser()) {
-                return child;
-            }
-            
-            AccessibilityNodeInfo result = findFirstVideo(child);
-            if (result != null) return result;
-        }
-        return null;
+    private int getRandomDelay() {
+        return minDelay + random.nextInt(maxDelay - minDelay);
+    }
+    
+    private int getRandomWatchTime() {
+        return watchMinTime + random.nextInt(watchMaxTime - watchMinTime);
     }
     
     private void sleep(long ms) {
@@ -762,22 +580,31 @@ public class AutoService extends AccessibilityService {
     }
     
     /**
-     * 初始化评论列表
+     * 初始化默认评论
      */
-    private void initComments() {
+    private void initDefaultComments() {
         commentList.add("I got the same for way less DM me");
         commentList.add("This is fire! Where can I get one?");
         commentList.add("I have this in stock, DM for details");
         commentList.add("Too expensive on their site, I found cheaper");
         commentList.add("Bro I can get you the same for 60% off, DM me");
-        commentList.add("Limited stock available, interested? DM me");
-        commentList.add("I sell these, way cheaper than retail hit me up");
+        commentList.add("Check my profile for more! 🔥");
+        commentList.add("Link in my bio! Follow me for finds");
         
         replyList.add("Thanks!");
-        commentList.add("Exactly!");
-        commentList.add("Same here!");
-        commentList.add("Great taste!");
-        commentList.add("Love this!");
+        replyList.add("Exactly!");
+        replyList.add("Same here!");
+        replyList.add("Great taste!");
+        replyList.add("Love this!");
+        replyList.add("Check my profile! 🔥");
+    }
+    
+    /**
+     * 获取统计信息
+     */
+    public String getStats() {
+        long sessionTime = (System.currentTimeMillis() - sessionStartTime) / 1000;
+        return "视频: " + videoCount + " | 评论: " + totalComments + " | 回复: " + totalReplies + " | 时长: " + sessionTime + "s";
     }
     
     @Override
