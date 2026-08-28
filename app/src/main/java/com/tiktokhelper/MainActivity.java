@@ -26,6 +26,8 @@ import java.util.List;
  */
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "TikTokHelper";
+    
     private Button btnStart, btnStop, btnSearch, btnOpenUrl;
     private CheckBox cbLike, cbComment, cbFollow, cbReply, cbWarmUp;
     private SeekBar sbLikeChance, sbCommentChance, sbFollowChance, sbReplyChance;
