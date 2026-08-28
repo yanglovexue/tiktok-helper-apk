@@ -32,12 +32,6 @@
                 android:resource="@xml/accessibility_config" />
         </service>
 
-        <service
-            android:name=".FloatingWindowService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="specialUse" />
-
     </application>
 
 </manifest>
