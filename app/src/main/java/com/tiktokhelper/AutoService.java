@@ -59,14 +59,14 @@ public class AutoService extends AccessibilityService {
     public static volatile int replyChance = 25;       // 25% 回复
     
     // ============ 养号模式概率 ============
-    public static volatile int warmUpLikeChance = 70;     // 养号模式：70% 点赞
-    public static volatile int warmUpFollowChance = 5;    // 养号模式：5% 关注
+    public static volatile int warmUpLikeChance = 45;     // 养号模式：45% 点赞（真人只赞约一半视频）
+    public static volatile int warmUpFollowChance = 8;    // 养号模式：8% 关注（养号期逐步关注同行）
     
     // ============ 延迟设置（防检测）============
-    public static volatile int minDelay = 3000;        // 最小延迟 3秒
-    public static volatile int maxDelay = 8000;        // 最大延迟 8秒
-    public static volatile int watchMinTime = 2000;    // 最少观看 2秒
-    public static volatile int watchMaxTime = 6000;    // 最多观看 6秒
+    public static volatile int minDelay = 4000;        // 最小延迟 4秒
+    public static volatile int maxDelay = 9000;        // 最大延迟 9秒
+    public static volatile int watchMinTime = 5000;    // 最少观看 5秒（避免秒赞检测）
+    public static volatile int watchMaxTime = 12000;   // 最多观看 12秒（真人完整观看）
     
     // ============ 评论内容 ============
     public static final List<String> commentList = new CopyOnWriteArrayList<>();
@@ -154,6 +154,14 @@ public class AutoService extends AccessibilityService {
             return;
         }
         
+        // 养号会话时长上限（45分钟）：模拟真人单次使用时长，防止长时间挂机触发风控
+        if (warmUpMode && sessionStartTime > 0
+                && System.currentTimeMillis() - sessionStartTime > 45 * 60 * 1000) {
+            Log.d(TAG, "养号会话已达 45 分钟，自动停止");
+            isRunning = false;
+            return;
+        }
+        
         // 养号模式：只点赞和浏览
         if (warmUpMode) {
             performWarmUp(rootNode);
@@ -215,18 +223,18 @@ public class AutoService extends AccessibilityService {
         
         // 使用养号模式概率：只点赞、关注或观看，不评论、不回复
         if (action < warmUpLikeChance) {
-            // 70% 点赞
+            // 45% 点赞
             performLike(rootNode);
         } else if (action < warmUpLikeChance + warmUpFollowChance) {
-            // 5% 关注
+            // 8% 关注
             performFollow(rootNode);
         } else {
-            // 只是观看
+            // 47% 只是观看（完整看完，模拟真人）
             sleep(getRandomWatchTime());
         }
         
-        // 随机滑动
-        if (scrollEnabled && random.nextInt(100) < 70) {
+        // 随机滑动：85% 看完滑走，15% 停留不动（更真实）
+        if (scrollEnabled && random.nextInt(100) < 85) {
             sleep(1000);
             performScroll();
         }
