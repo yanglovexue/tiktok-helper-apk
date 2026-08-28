@@ -165,7 +165,30 @@ public class MainActivity extends AppCompatActivity {
         cbComment.setOnCheckedChangeListener((buttonView, isChecked) -> AutoService.commentEnabled = isChecked);
         cbFollow.setOnCheckedChangeListener((buttonView, isChecked) -> AutoService.followEnabled = isChecked);
         cbReply.setOnCheckedChangeListener((buttonView, isChecked) -> AutoService.replyCommentEnabled = isChecked);
-        cbWarmUp.setOnCheckedChangeListener((buttonView, isChecked) -> AutoService.warmUpMode = isChecked);
+        cbWarmUp.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            AutoService.warmUpMode = isChecked;
+            // 养号模式下禁用无关功能开关，无需手动取消勾选
+            updateFeatureControls(isChecked);
+        });
+    }
+    
+    /**
+     * 养号模式：自动勾选涉及养号的功能（点赞/关注），取消并禁用其他（评论/回复）
+     */
+    private void updateFeatureControls(boolean warmUpMode) {
+        if (warmUpMode) {
+            // 涉及养号的功能：自动勾选（养号模式内部会点赞/关注）
+            cbLike.setChecked(true);
+            cbFollow.setChecked(true);
+            // 与养号无关的功能：取消勾选
+            cbComment.setChecked(false);
+            cbReply.setChecked(false);
+        }
+        // 养号模式下全部锁定，防止手动修改
+        cbLike.setEnabled(!warmUpMode);
+        cbComment.setEnabled(!warmUpMode);
+        cbFollow.setEnabled(!warmUpMode);
+        cbReply.setEnabled(!warmUpMode);
     }
     
     private void startAutomation() {
@@ -322,6 +345,9 @@ public class MainActivity extends AppCompatActivity {
         cbFollow.setChecked(AutoService.followEnabled);
         cbReply.setChecked(AutoService.replyCommentEnabled);
         cbWarmUp.setChecked(AutoService.warmUpMode);
+        
+        // 养号模式下同步禁用功能开关
+        updateFeatureControls(AutoService.warmUpMode);
     }
     
     @Override
