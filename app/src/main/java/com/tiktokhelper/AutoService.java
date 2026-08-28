@@ -83,6 +83,9 @@ public class AutoService extends AccessibilityService {
     private volatile int totalReplies = 0;
     private volatile long lastActionTime = 0;
     private long sessionStartTime = 0;
+    // 非视频页连续返回计数：防止无限返回循环（如一直回不到视频流时停止自动化）
+    private int backPressCount = 0;
+    private long lastBackPressTime = 0;
     // 后台任务执行器：将耗时操作移出主线程，避免 ANR。有界队列防积压，多余任务直接丢弃
     private final ExecutorService actionExecutor = new ThreadPoolExecutor(
         1, 1, 0L, TimeUnit.MILLISECONDS,
@@ -153,6 +156,31 @@ public class AutoService extends AccessibilityService {
             Log.d(TAG, "跳过操作：TikTok 不在前台");
             return;
         }
+        
+        // 页面类型守卫：仅视频播放页才操作（视频页有可点击的 Comment 按钮）
+        // 音乐详情页/列表页/个人主页等非视频页 → 返回上一页回到视频流
+        if (!isVideoPage(rootNode)) {
+            long now = System.currentTimeMillis();
+            // 10秒内连续返回达到 5 次仍回不到视频页 → 停止自动化（避免卡在非视频页反复空转）
+            if (now - lastBackPressTime < 10000) {
+                backPressCount++;
+            } else {
+                backPressCount = 1;
+            }
+            lastBackPressTime = now;
+            
+            if (backPressCount >= 5) {
+                Log.d(TAG, "连续返回仍非视频页，自动停止");
+                isRunning = false;
+                backPressCount = 0;
+                return;
+            }
+            Log.d(TAG, "非视频页，返回上一页");
+            performGlobalAction(GLOBAL_ACTION_BACK);
+            return;
+        }
+        // 回到视频页后重置返回计数
+        backPressCount = 0;
         
         // 养号会话时长上限（45分钟）：模拟真人单次使用时长，防止长时间挂机触发风控
         if (warmUpMode && sessionStartTime > 0
@@ -722,6 +750,27 @@ public class AutoService extends AccessibilityService {
     private boolean isTikTokRoot(AccessibilityNodeInfo root) {
         CharSequence pkg = root.getPackageName();
         return pkg != null && isTikTokPackage(pkg.toString());
+    }
+    
+    /**
+     * 判断当前是否为视频播放页（视频页有可点击的 Comment/评论 按钮）
+     * 音乐详情页/列表页/个人主页/Splash 等非视频页返回 false
+     */
+    private boolean isVideoPage(AccessibilityNodeInfo root) {
+        if (root == null) return false;
+        try {
+            AccessibilityNodeInfo commentBtn = findNodeByDesc(root, "Comment");
+            if (commentBtn == null) commentBtn = findNodeByDesc(root, "评论");
+            if (commentBtn != null) {
+                // 必须是可点击的按钮节点（避免误匹配评论内容文本）
+                boolean clickable = commentBtn.isClickable();
+                commentBtn.recycle();
+                return clickable;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     private boolean isTikTokPackage(String pkg) {
