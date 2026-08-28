@@ -47,9 +47,15 @@ public class AutoService extends AccessibilityService {
     
     // ============ 概率设置（优化值）============
     public static int likeChance = 60;        // 60% 点赞
-    public static int commentChance = 15;     // 15% 评论（降低频率防检测）
+    public static int commentChance = 15;     // 15% 评论
     public static int followChance = 5;       // 5% 关注
     public static int replyChance = 25;       // 25% 回复
+    
+    // ============ 养号模式概率 ============
+    public static int warmUpLikeChance = 70;     // 养号模式：70% 点赞
+    public static int warmUpCommentChance = 10;  // 养号模式：10% 评论
+    public static int warmUpFollowChance = 5;    // 养号模式：5% 关注
+    public static int warmUpReplyChance = 15;    // 养号模式：15% 回复
     
     // ============ 延迟设置（防检测）============
     public static int minDelay = 3000;        // 最小延迟 3秒
@@ -159,17 +165,21 @@ public class AutoService extends AccessibilityService {
     private void performWarmUp(AccessibilityNodeInfo rootNode) {
         int action = random.nextInt(100);
         
-        // 30% 点赞
-        if (action < 30) {
+        // 使用养号模式概率
+        if (action < warmUpLikeChance) {
+            // 70% 点赞
             performLike(rootNode);
-        }
-        // 5% 关注
-        else if (action < 35) {
+        } else if (action < warmUpLikeChance + warmUpFollowChance) {
+            // 5% 关注
             performFollow(rootNode);
-        }
-        // 65% 只是观看
-        else {
-            // 模拟观看时间
+        } else if (action < warmUpLikeChance + warmUpFollowChance + warmUpReplyChance) {
+            // 15% 回复
+            performWarmUpReply(rootNode);
+        } else if (action < warmUpLikeChance + warmUpFollowChance + warmUpReplyChance + warmUpCommentChance) {
+            // 10% 评论
+            performWarmUpComment(rootNode);
+        } else {
+            // 只是观看
             sleep(getRandomWatchTime());
         }
         
@@ -178,6 +188,161 @@ public class AutoService extends AccessibilityService {
             sleep(1000);
             performScroll();
         }
+    }
+    
+    /**
+     * 养号模式评论 - 使用通用话术
+     */
+    private void performWarmUpComment(AccessibilityNodeInfo rootNode) {
+        AccessibilityNodeInfo commentBtn = findNodeByDesc(rootNode, "Comment");
+        if (commentBtn == null) commentBtn = findNodeByDesc(rootNode, "评论");
+        if (commentBtn == null) return;
+        
+        commentBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        commentBtn.recycle();
+        
+        sleep(1500);
+        
+        AccessibilityNodeInfo newRoot = getRootInActiveWindow();
+        if (newRoot == null) return;
+        
+        AccessibilityNodeInfo inputBox = findNodeByClass(newRoot, "android.widget.EditText");
+        if (inputBox == null) {
+            newRoot.recycle();
+            return;
+        }
+        
+        // 养号模式使用通用评论
+        String comment = getWarmUpComment();
+        Bundle args = new Bundle();
+        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, comment);
+        inputBox.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+        inputBox.recycle();
+        
+        sleep(800);
+        
+        AccessibilityNodeInfo sendRoot = getRootInActiveWindow();
+        if (sendRoot != null) {
+            AccessibilityNodeInfo sendBtn = findNodeByText(sendRoot, "Send");
+            if (sendBtn == null) sendBtn = findNodeByDesc(sendRoot, "Send");
+            if (sendBtn == null) sendBtn = findNodeByText(sendRoot, "发送");
+            if (sendBtn != null) {
+                sendBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                sendBtn.recycle();
+                totalComments++;
+                Log.d(TAG, "养号评论: " + comment);
+            }
+            sendRoot.recycle();
+        }
+        
+        sleep(500);
+        performGlobalAction(GLOBAL_ACTION_BACK);
+    }
+    
+    /**
+     * 养号模式回复 - 使用通用话术
+     */
+    private void performWarmUpReply(AccessibilityNodeInfo rootNode) {
+        AccessibilityNodeInfo commentBtn = findNodeByDesc(rootNode, "Comment");
+        if (commentBtn == null) commentBtn = findNodeByDesc(rootNode, "评论");
+        if (commentBtn == null) return;
+        
+        commentBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        commentBtn.recycle();
+        
+        sleep(2000);
+        
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) return;
+        
+        // 查找回复按钮
+        AccessibilityNodeInfo replyBtn = findNodeByText(root, "Reply");
+        if (replyBtn == null) replyBtn = findNodeByText(root, "回复");
+        
+        if (replyBtn != null) {
+            replyBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            replyBtn.recycle();
+            
+            sleep(1000);
+            
+            AccessibilityNodeInfo inputRoot = getRootInActiveWindow();
+            if (inputRoot != null) {
+                AccessibilityNodeInfo inputBox = findNodeByClass(inputRoot, "android.widget.EditText");
+                if (inputBox != null) {
+                    String reply = getWarmUpReply();
+                    Bundle args = new Bundle();
+                    args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, reply);
+                    inputBox.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+                    inputBox.recycle();
+                    
+                    sleep(800);
+                    
+                    AccessibilityNodeInfo sendRoot = getRootInActiveWindow();
+                    if (sendRoot != null) {
+                        AccessibilityNodeInfo sendBtn = findNodeByText(sendRoot, "Send");
+                        if (sendBtn == null) sendBtn = findNodeByDesc(sendRoot, "Send");
+                        if (sendBtn == null) sendBtn = findNodeByText(sendRoot, "发送");
+                        if (sendBtn != null) {
+                            sendBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            sendBtn.recycle();
+                            totalReplies++;
+                            Log.d(TAG, "养号回复: " + reply);
+                        }
+                        sendRoot.recycle();
+                    }
+                }
+                inputRoot.recycle();
+            }
+            
+            sleep(500);
+            performGlobalAction(GLOBAL_ACTION_BACK);
+        } else {
+            performGlobalAction(GLOBAL_ACTION_BACK);
+        }
+        root.recycle();
+    }
+    
+    /**
+     * 获取养号模式通用评论
+     */
+    private String getWarmUpComment() {
+        String[] warmUpComments = {
+            "太棒了！🔥",
+            "好看！",
+            "喜欢这个！",
+            "太厉害了！",
+            "学到了！",
+            "赞！",
+            "不错不错 👍",
+            "支持！",
+            "很棒的视频！",
+            "继续关注！",
+            "太有趣了！",
+            "喜欢这个风格！",
+            "很有创意！",
+            "太专业了！",
+            "学到了很多！"
+        };
+        return warmUpComments[random.nextInt(warmUpComments.length)];
+    }
+    
+    /**
+     * 获取养号模式通用回复
+     */
+    private String getWarmUpReply() {
+        String[] warmUpReplies = {
+            "谢谢！",
+            "同意！",
+            "没错！",
+            "确实是这样！",
+            "学到了！",
+            "感谢分享！",
+            "支持！",
+            "赞同！",
+            "有道理！",
+            "好的！"
+        };
+        return warmUpReplies[random.nextInt(warmUpReplies.length)];
     }
     
     /**
