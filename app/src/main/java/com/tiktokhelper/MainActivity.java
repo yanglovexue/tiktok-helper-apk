@@ -246,12 +246,17 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private boolean isAccessibilityEnabled() {
-        String enabledServices = Settings.Secure.getString(
-            getContentResolver(),
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        );
-        if (enabledServices != null) {
-            return enabledServices.contains(getPackageName() + "/" + AutoService.class.getName());
+        try {
+            String enabledServices = Settings.Secure.getString(
+                getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            );
+            if (enabledServices != null) {
+                String expectedService = getPackageName() + "/" + AutoService.class.getName();
+                return enabledServices.contains(expectedService);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "检查无障碍服务失败: " + e.getMessage());
         }
         return false;
     }
