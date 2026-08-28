@@ -304,9 +304,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="▶ 启动"
+                android:text="▶ 启动 (自动打开TikTok)"
                 android:backgroundTint="#e94560"
                 android:textColor="#ffffff"
+                android:textSize="12sp"
                 android:layout_marginEnd="8dp" />
 
             <Button
@@ -320,19 +321,11 @@
                 android:enabled="false" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btn_open_tiktok"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="📱 打开 TikTok"
-            android:backgroundTint="#0f3460"
-            android:textColor="#ffffff" />
-
         <!-- 使用说明 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="使用说明:\n1. 开启无障碍服务\n2. 打开 TikTok 停在首页\n3. 选择功能模式\n4. 点击启动开始自动化\n\n养号模式: 只点赞浏览不评论，模拟真实用户\n关键词搜索: 自动搜索并评论相关视频\n链接评论: 粘贴TikTok视频链接直接评论"
+            android:text="使用说明:\n1. 点击【启动】自动打开TikTok并开始自动化\n2. 养号模式: 只点赞浏览不评论，模拟真实用户\n3. 智能回复: 读取评论内容并自动回复\n4. 主页引导: 评论中自动引导用户访问你的主页\n5. 关键词搜索: 输入关键词搜索相关视频并评论\n6. 链接评论: 粘贴TikTok视频链接直接评论"
             android:textSize="10sp"
             android:textColor="#888888"
             android:layout_marginTop="16dp"
