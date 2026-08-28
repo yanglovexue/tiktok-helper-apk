@@ -246,7 +246,7 @@ public class AutoService extends AccessibilityService {
      * 执行点赞
      */
     private boolean performLike(AccessibilityNodeInfo rootNode) {
-        // 方法1：优先点击点赞按钮节点，避免双击屏幕误触弹层菜单
+        // 优先点击点赞按钮节点，避免双击屏幕误触弹层菜单
         AccessibilityNodeInfo likeBtn = null;
         // 先找可点击的点赞按钮（TikTok 英文/中文 content-desc）
         AccessibilityNodeInfo likeEn = findNodeByDesc(rootNode, "Like");
@@ -272,10 +272,9 @@ public class AutoService extends AccessibilityService {
             return true;
         }
         
-        // 方法2：双击屏幕（兜底），以手势回调结果作为真实成功依据
-        boolean liked = performDoubleClick();
-        Log.d(TAG, liked ? "点赞成功" : "点赞未完成");
-        return liked;
+        // 找不到点赞按钮时不做任何手势操作（避免双击屏幕误触菜单/乱点）
+        Log.d(TAG, "跳过点赞：未找到点赞按钮节点");
+        return false;
     }
     
     /**
@@ -649,59 +648,6 @@ public class AutoService extends AccessibilityService {
                 videoCount++;
             }
         }, null);
-    }
-    
-    /**
-     * 双击屏幕点赞 - 仅当 TikTok 在前台时才执行
-     */
-    private boolean performDoubleClick() {
-        if (!isTikTokForeground()) {
-            Log.d(TAG, "跳过双击：TikTok 不在前台");
-            return false;
-        }
-        int width = getResources().getDisplayMetrics().widthPixels;
-        int height = getResources().getDisplayMetrics().heightPixels;
-        
-        int x = width / 2 + random.nextInt(60) - 30;  // 随机偏移
-        int y = height / 2 + random.nextInt(60) - 30;
-        
-        Path clickPath = new Path();
-        clickPath.moveTo(x, y);
-        
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        
-        GestureDescription.StrokeDescription click1 = 
-            new GestureDescription.StrokeDescription(clickPath, 0, 50, true);
-        GestureDescription.StrokeDescription click2 = 
-            new GestureDescription.StrokeDescription(clickPath, 80, 50, false);
-        
-        builder.addStroke(click1);
-        builder.addStroke(click2);
-        
-        // 通过手势回调获取真实执行结果
-        final boolean[] success = {false};
-        final CountDownLatch latch = new CountDownLatch(1);
-        dispatchGesture(builder.build(), new GestureResultCallback() {
-            @Override
-            public void onCompleted(GestureDescription gestureDescription) {
-                success[0] = true;
-                latch.countDown();
-            }
-            
-            @Override
-            public void onCancelled(GestureDescription gestureDescription) {
-                success[0] = false;
-                latch.countDown();
-            }
-        }, null);
-        
-        // 等待手势结果（最多 3 秒）
-        try {
-            latch.await(3, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        return success[0];
     }
     
     // ============ 节点查找工具 ============
