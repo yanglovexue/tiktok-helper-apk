@@ -219,7 +219,33 @@ public class AutoService extends AccessibilityService {
      * 执行点赞
      */
     private boolean performLike(AccessibilityNodeInfo rootNode) {
-        // 方法1：双击屏幕，以手势回调结果作为真实成功依据
+        // 方法1：优先点击点赞按钮节点，避免双击屏幕误触弹层菜单
+        AccessibilityNodeInfo likeBtn = null;
+        // 先找可点击的点赞按钮（TikTok 英文/中文 content-desc）
+        AccessibilityNodeInfo likeEn = findNodeByDesc(rootNode, "Like");
+        if (likeEn != null && likeEn.isClickable()) {
+            likeBtn = likeEn;
+        } else if (likeEn != null) {
+            likeEn.recycle();
+            likeEn = null;
+        }
+        if (likeBtn == null) {
+            AccessibilityNodeInfo likeZh = findNodeByDesc(rootNode, "点赞");
+            if (likeZh != null && likeZh.isClickable()) {
+                likeBtn = likeZh;
+            } else if (likeZh != null) {
+                likeZh.recycle();
+                likeZh = null;
+            }
+        }
+        if (likeBtn != null) {
+            likeBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            likeBtn.recycle();
+            Log.d(TAG, "点赞成功");
+            return true;
+        }
+        
+        // 方法2：双击屏幕（兜底），以手势回调结果作为真实成功依据
         boolean liked = performDoubleClick();
         Log.d(TAG, liked ? "点赞成功" : "点赞未完成");
         return liked;
