@@ -73,7 +73,7 @@ public class AutoService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (!isRunning) return;
-        if (event.getPackageName() == null || !isTikTokPackage(event.getPackageName())) return;
+        if (event.getPackageName() == null || !isTikTokPackage(event.getPackageName().toString())) return;
         
         long now = System.currentTimeMillis();
         if (now - lastActionTime < 2000) return;
@@ -279,7 +279,7 @@ public class AutoService extends AccessibilityService {
         // 检查是否是评论文本节点
         if (node.getClassName() != null && 
             (node.getClassName().toString().contains("TextView") || 
-             node.getClassName().contains("1BYa"))) {
+             node.getClassName().toString().contains("1BYa"))) {
             CharSequence text = node.getText();
             if (text != null && text.length() > 3 && text.length() < 200) {
                 comments.add(text.toString());
@@ -332,7 +332,7 @@ public class AutoService extends AccessibilityService {
             "Thanks! Follow me for more finds"
         };
         
-        return defaultReplies[random.nextInt(defaultReplies.length())];
+        return defaultReplies[random.nextInt(defaultReplies.length)];
     }
     
     /**
