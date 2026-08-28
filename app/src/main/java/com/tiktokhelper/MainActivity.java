@@ -235,7 +235,9 @@ public class MainActivity extends AppCompatActivity {
             while (AutoService.isRunning && !Thread.currentThread().isInterrupted()) {
                 try {
                     Thread.sleep(3000);
-                    if (AutoService.scrollEnabled && AutoService.getInstance() != null) {
+                    // 养号模式下不禁用自动滚动（滑动节奏由养号模式自身控制，避免双滑动源叠加过快）
+                    // 普通模式下保持 3 秒滚动
+                    if (AutoService.scrollEnabled && !AutoService.warmUpMode && AutoService.getInstance() != null) {
                         AutoService.getInstance().performScroll();
                     }
                     // 若 TikTok 已不在前台且自动化仍在运行，说明用户退出了 TikTok，自动停止
