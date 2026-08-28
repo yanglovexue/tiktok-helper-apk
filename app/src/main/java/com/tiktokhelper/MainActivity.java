@@ -1,9 +1,6 @@
 package com.tiktokhelper;
 
-import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
@@ -37,25 +34,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        // 请求所有权限
-        requestAllPermissions();
-        
         initViews();
         updateUI();
-    }
-    
-    /**
-     * 请求所有必要权限
-     */
-    private void requestAllPermissions() {
-        // 请求悬浮窗权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
-            }
-        }
     }
     
     private void initViews() {
