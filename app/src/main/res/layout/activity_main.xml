@@ -304,10 +304,11 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="▶ 启动 (自动打开TikTok)"
+                android:text="▶ 启动 (打开TK)"
                 android:backgroundTint="#e94560"
                 android:textColor="#ffffff"
                 android:textSize="12sp"
+                android:singleLine="true"
                 android:layout_marginEnd="8dp" />
 
             <Button
