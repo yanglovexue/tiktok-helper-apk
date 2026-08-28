@@ -172,9 +172,6 @@ public class MainActivity extends AppCompatActivity {
         isRunning = true;
         updateUI();
         
-        // 启动悬浮窗
-        startFloatingWindow();
-        
         // 自动打开 TikTok
         openTiktok();
         
@@ -196,25 +193,10 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "自动化已启动", Toast.LENGTH_SHORT).show();
     }
     
-    private void startFloatingWindow() {
-        Intent intent = new Intent(this, FloatingWindowService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startService(intent);
-        }
-    }
-    
-    private void stopFloatingWindow() {
-        Intent intent = new Intent(this, FloatingWindowService.class);
-        stopService(intent);
-    }
-    
     private void stopAutomation() {
         AutoService.isRunning = false;
         isRunning = false;
         updateUI();
-        stopFloatingWindow();
         Toast.makeText(this, "自动化已停止", Toast.LENGTH_SHORT).show();
     }
     
