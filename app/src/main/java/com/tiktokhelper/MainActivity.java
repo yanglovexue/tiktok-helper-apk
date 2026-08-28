@@ -3,24 +3,29 @@ package com.tiktokhelper;
 import android.accessibilityservice.AccessibilityService;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 主控制面板 - 全功能版
  */
 public class MainActivity extends AppCompatActivity {
 
-    private Button btnStart, btnStop, btnOpenTiktok, btnSearch, btnOpenUrl;
+    private Button btnStart, btnStop, btnSearch, btnOpenUrl;
     private CheckBox cbLike, cbComment, cbFollow, cbReply, cbWarmUp;
     private SeekBar sbLikeChance, sbCommentChance, sbFollowChance, sbReplyChance;
     private EditText etComments, etReplies, etKeyword, etUrl;
@@ -33,14 +38,31 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
+        // 请求所有权限
+        requestAllPermissions();
+        
         initViews();
         updateUI();
+    }
+    
+    /**
+     * 请求所有必要权限
+     */
+    private void requestAllPermissions() {
+        // 请求悬浮窗权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+            }
+        }
     }
     
     private void initViews() {
         btnStart = findViewById(R.id.btn_start);
         btnStop = findViewById(R.id.btn_stop);
-        btnOpenTiktok = findViewById(R.id.btn_open_tiktok);
+        // btnOpenTiktok removed - auto-launch on start
         btnSearch = findViewById(R.id.btn_search);
         btnOpenUrl = findViewById(R.id.btn_open_url);
         
@@ -78,9 +100,6 @@ public class MainActivity extends AppCompatActivity {
         
         // 停止按钮
         btnStop.setOnClickListener(v -> stopAutomation());
-        
-        // 打开 TikTok
-        btnOpenTiktok.setOnClickListener(v -> openTiktok());
         
         // 搜索并评论
         btnSearch.setOnClickListener(v -> {
@@ -155,6 +174,9 @@ public class MainActivity extends AppCompatActivity {
         isRunning = true;
         updateUI();
         
+        // 自动打开 TikTok
+        openTiktok();
+        
         // 启动滑动线程
         new Thread(() -> {
             while (AutoService.isRunning) {
@@ -207,12 +229,20 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void openTiktok() {
-        Intent intent = getPackageManager().getLaunchIntentForPackage("com.zhiliaoapp.musically");
-        if (intent != null) {
-            startActivity(intent);
-        } else {
-            Toast.makeText(this, "TikTok 未安装", Toast.LENGTH_SHORT).show();
+        String[] tiktokPackages = {
+            "com.zhiliaoapp.musically",
+            "com.ss.android.ugc.trill",
+            "com.ss.android.ugc.aweme"
+        };
+        
+        for (String pkg : tiktokPackages) {
+            Intent intent = getPackageManager().getLaunchIntentForPackage(pkg);
+            if (intent != null) {
+                startActivity(intent);
+                return;
+            }
         }
+        Toast.makeText(this, "TikTok 未安装", Toast.LENGTH_SHORT).show();
     }
     
     private boolean isAccessibilityEnabled() {
