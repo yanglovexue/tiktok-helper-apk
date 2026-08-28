@@ -1,6 +1,7 @@
 package com.tiktokhelper;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
@@ -19,6 +20,13 @@ public class AutoService extends AccessibilityService {
 
     private static final String TAG = "TikTokHelper";
     private static final String TIKTOK_PACKAGE = "com.zhiliaoapp.musically";
+    
+    // 单例引用
+    private static AutoService instance;
+    
+    public static AutoService getInstance() {
+        return instance;
+    }
     
     // 控制开关
     public static boolean isRunning = false;
@@ -40,6 +48,7 @@ public class AutoService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
+        instance = this;
         Log.d(TAG, "服务已连接");
         initComments();
     }
@@ -321,6 +330,7 @@ public class AutoService extends AccessibilityService {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        instance = null;
         isRunning = false;
     }
 }
