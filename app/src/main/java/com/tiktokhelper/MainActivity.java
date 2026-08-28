@@ -7,19 +7,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 主控制面板 - 全功能版
@@ -35,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvStatus, tvLikeChance, tvCommentChance, tvFollowChance, tvReplyChance;
     
     private boolean isRunning = false;
+    private Thread scrollThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
         tvFollowChance = findViewById(R.id.tv_follow_chance);
         tvReplyChance = findViewById(R.id.tv_reply_chance);
         
-        // 启动按钮 - 直接启动，不检查无障碍服务
+        // 启动按钮
         btnStart.setOnClickListener(v -> {
             startAutomation();
         });
@@ -107,6 +103,10 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             AutoService.searchKeyword = keyword;
+            if (AutoService.getInstance() == null) {
+                Toast.makeText(this, "请先开启无障碍服务", Toast.LENGTH_SHORT).show();
+                return;
+            }
             AutoService.getInstance().searchAndComment(keyword);
             Toast.makeText(this, "正在搜索: " + keyword, Toast.LENGTH_SHORT).show();
         });
@@ -119,6 +119,10 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             AutoService.targetVideoUrl = url;
+            if (AutoService.getInstance() == null) {
+                Toast.makeText(this, "请先开启无障碍服务", Toast.LENGTH_SHORT).show();
+                return;
+            }
             AutoService.getInstance().openUrlAndComment(url);
             Toast.makeText(this, "正在打开链接", Toast.LENGTH_SHORT).show();
         });
@@ -165,6 +169,13 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void startAutomation() {
+        // 检查无障碍服务是否开启
+        if (!isAccessibilityEnabled()) {
+            Toast.makeText(this, "请先开启无障碍服务", Toast.LENGTH_SHORT).show();
+            openAccessibilitySettings();
+            return;
+        }
+        
         // 保存评论
         saveComments();
         
@@ -175,9 +186,12 @@ public class MainActivity extends AppCompatActivity {
         // 自动打开 TikTok
         openTiktok();
         
-        // 启动滑动线程
-        new Thread(() -> {
-            while (AutoService.isRunning) {
+        // 启动滑动线程（先停止旧的线程，避免重复启动）
+        if (scrollThread != null && scrollThread.isAlive()) {
+            scrollThread.interrupt();
+        }
+        scrollThread = new Thread(() -> {
+            while (AutoService.isRunning && !Thread.currentThread().isInterrupted()) {
                 try {
                     Thread.sleep(3000);
                     if (AutoService.scrollEnabled && AutoService.getInstance() != null) {
@@ -188,7 +202,8 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 }
             }
-        }).start();
+        });
+        scrollThread.start();
         
         Toast.makeText(this, "自动化已启动", Toast.LENGTH_SHORT).show();
     }
@@ -201,27 +216,23 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void saveComments() {
-        // 保存主评论
+        // 保存主评论（先清空再填充）
+        AutoService.commentList.clear();
         String commentsText = etComments.getText().toString();
-        if (!commentsText.isEmpty()) {
-            AutoService.commentList.clear();
-            String[] comments = commentsText.split("\n");
-            for (String comment : comments) {
-                if (!comment.trim().isEmpty()) {
-                    AutoService.commentList.add(comment.trim());
-                }
+        String[] comments = commentsText.split("\n");
+        for (String comment : comments) {
+            if (!comment.trim().isEmpty()) {
+                AutoService.commentList.add(comment.trim());
             }
         }
         
-        // 保存回复评论
+        // 保存回复评论（先清空再填充）
+        AutoService.replyList.clear();
         String repliesText = etReplies.getText().toString();
-        if (!repliesText.isEmpty()) {
-            AutoService.replyList.clear();
-            String[] replies = repliesText.split("\n");
-            for (String reply : replies) {
-                if (!reply.trim().isEmpty()) {
-                    AutoService.replyList.add(reply.trim());
-                }
+        String[] replies = repliesText.split("\n");
+        for (String reply : replies) {
+            if (!reply.trim().isEmpty()) {
+                AutoService.replyList.add(reply.trim());
             }
         }
     }
@@ -317,6 +328,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         updateUI();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 停止滑动线程，避免 Activity 销毁后线程仍在运行
+        if (scrollThread != null) {
+            scrollThread.interrupt();
+            scrollThread = null;
+        }
     }
     
     // 简化的 SeekBar 监听器
