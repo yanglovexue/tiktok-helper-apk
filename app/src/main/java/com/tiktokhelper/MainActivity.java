@@ -238,6 +238,14 @@ public class MainActivity extends AppCompatActivity {
                     if (AutoService.scrollEnabled && AutoService.getInstance() != null) {
                         AutoService.getInstance().performScroll();
                     }
+                    // 若 TikTok 已不在前台且自动化仍在运行，说明用户退出了 TikTok，自动停止
+                    if (AutoService.getInstance() != null && !AutoService.getInstance().isTikTokForegroundPublic()) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, "TikTok 已退出，自动化已停止", Toast.LENGTH_LONG).show();
+                            stopAutomation();
+                        });
+                        break;
+                    }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
