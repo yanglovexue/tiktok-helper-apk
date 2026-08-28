@@ -95,7 +95,7 @@ fi
 if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
     case $MAX_FD in #(
       max*)
-        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
+        # In POSIX sh, ulimit -H is undefined. That is why the result is checked to see if it worked.
         # shellcheck disable=SC3045
         MAX_FD=$( ulimit -H -n ) ||
             warn "Could not query maximum file descriptor limit"
@@ -103,14 +103,14 @@ if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
     case $MAX_FD in  #(
       '' | soft) :;; #(
       *)
-        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
+        # In POSIX sh, ulimit -n is undefined. That is why the result is checked to see if it worked.
         # shellcheck disable=SC3045
         ulimit -n "$MAX_FD" ||
             warn "Could not set maximum file descriptor limit to $MAX_FD"
     esac
 fi
 
-# Collect all arguments for the java command, stracks://issues/gradle/gradle/issues/19740
+# Collect all arguments for the java command
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
         -classpath "$CLASSPATH" \
@@ -124,8 +124,6 @@ then
 fi
 
 # Use "xargs" to parse quoted args.
-#
-# With -n://nadeau@nadeausoftware.com/blog/2020/01/22/gradle-wrapper-tips
 eval "set -- $(
         printf '%s\n' "$@" |
         xargs -n1 |
