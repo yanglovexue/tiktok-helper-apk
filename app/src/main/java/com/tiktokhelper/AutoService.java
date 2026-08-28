@@ -39,6 +39,7 @@ public class AutoService extends AccessibilityService {
     public static boolean isRunning = false;
     public static boolean likeEnabled = true;
     public static boolean commentEnabled = true;
+    public static boolean scrollEnabled = true;
     public static boolean followEnabled = false;
     public static boolean replyCommentEnabled = true;
     public static boolean warmUpMode = false;
@@ -600,9 +601,135 @@ public class AutoService extends AccessibilityService {
     }
     
     /**
-     * 获取统计信息
+     * 关键词搜索并评论
      */
-    public String getStats() {
+    public void searchAndComment(String keyword) {
+        if (!isRunning) return;
+        
+        new Thread(() -> {
+            try {
+                // 点击搜索按钮
+                AccessibilityNodeInfo root = getRootInActiveWindow();
+                if (root == null) return;
+                
+                AccessibilityNodeInfo searchBtn = findNodeByDesc(root, "Search");
+                if (searchBtn == null) {
+                    searchBtn = findNodeById(root, TIKTOK_PACKAGE + ":id/search");
+                }
+                if (searchBtn == null) {
+                    root.recycle();
+                    return;
+                }
+                
+                searchBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                searchBtn.recycle();
+                
+                sleep(1000);
+                
+                // 输入关键词
+                AccessibilityNodeInfo inputRoot = getRootInActiveWindow();
+                if (inputRoot == null) return;
+                
+                AccessibilityNodeInfo searchInput = findNodeByClass(inputRoot, "android.widget.EditText");
+                if (searchInput == null) {
+                    inputRoot.recycle();
+                    return;
+                }
+                
+                Bundle args = new Bundle();
+                args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, keyword);
+                searchInput.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+                searchInput.recycle();
+                
+                sleep(500);
+                
+                // 点击搜索
+                AccessibilityNodeInfo searchActionRoot = getRootInActiveWindow();
+                if (searchActionRoot != null) {
+                    AccessibilityNodeInfo searchAction = findNodeByText(searchActionRoot, "Search");
+                    if (searchAction == null) searchAction = findNodeByDesc(searchActionRoot, "Search");
+                    if (searchAction != null) {
+                        searchAction.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                        searchAction.recycle();
+                    }
+                    searchActionRoot.recycle();
+                }
+                
+                sleep(2000);
+                
+                // 点击第一个搜索结果
+                AccessibilityNodeInfo resultRoot = getRootInActiveWindow();
+                if (resultRoot != null) {
+                    AccessibilityNodeInfo firstVideo = findFirstVideo(resultRoot);
+                    if (firstVideo != null) {
+                        firstVideo.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                        firstVideo.recycle();
+                        sleep(2000);
+                        
+                        AccessibilityNodeInfo videoRoot = getRootInActiveWindow();
+                        if (videoRoot != null) {
+                            performComment(videoRoot);
+                            videoRoot.recycle();
+                        }
+                    }
+                    resultRoot.recycle();
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "搜索评论失败: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * 通过链接打开视频并评论
+     */
+    public void openUrlAndComment(String url) {
+        if (!isRunning) return;
+        
+        new Thread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(android.net.Uri.parse(url));
+                intent.setPackage(TIKTOK_PACKAGE);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                
+                sleep(3000);
+                
+                AccessibilityNodeInfo root = getRootInActiveWindow();
+                if (root != null) {
+                    performComment(root);
+                    root.recycle();
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "链接评论失败: " + e.getMessage());
+                try {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+                    browserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(browserIntent);
+                } catch (Exception ex) {
+                    Log.e(TAG, "浏览器打开也失败: " + ex.getMessage());
+                }
+            }
+        }).start();
+    }
+    
+    private AccessibilityNodeInfo findFirstVideo(AccessibilityNodeInfo root) {
+        for (int i = 0; i < root.getChildCount(); i++) {
+            AccessibilityNodeInfo child = root.getChild(i);
+            if (child == null) continue;
+            
+            if (child.isClickable() && child.isVisibleToUser()) {
+                return child;
+            }
+            
+            AccessibilityNodeInfo result = findFirstVideo(child);
+            if (result != null) return result;
+        }
+        return null;
+    }
         long sessionTime = (System.currentTimeMillis() - sessionStartTime) / 1000;
         return "视频: " + videoCount + " | 评论: " + totalComments + " | 回复: " + totalReplies + " | 时长: " + sessionTime + "s";
     }
