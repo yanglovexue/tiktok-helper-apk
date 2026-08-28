@@ -245,20 +245,30 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void openTiktok() {
-        String[] tiktokPackages = {
-            "com.zhiliaoapp.musically",
-            "com.ss.android.ugc.trill",
-            "com.ss.android.ugc.aweme"
-        };
-        
-        for (String pkg : tiktokPackages) {
-            Intent intent = getPackageManager().getLaunchIntentForPackage(pkg);
-            if (intent != null) {
-                startActivity(intent);
-                return;
+        try {
+            // 尝试多种方式打开 TikTok
+            String[] tiktokPackages = {
+                "com.zhiliaoapp.musically",
+                "com.ss.android.ugc.trill",
+                "com.ss.android.ugc.aweme"
+            };
+            
+            for (String pkg : tiktokPackages) {
+                Intent intent = getPackageManager().getLaunchIntentForPackage(pkg);
+                if (intent != null) {
+                    startActivity(intent);
+                    return;
+                }
             }
+            
+            // 如果 getLaunchIntentForPackage 失败，尝试直接启动 SplashActivity
+            Intent intent = new Intent();
+            intent.setClassName("com.zhiliaoapp.musically", "com.ss.android.ugc.aweme.splash.SplashActivity");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "TikTok 未安装", Toast.LENGTH_SHORT).show();
         }
-        Toast.makeText(this, "TikTok 未安装", Toast.LENGTH_SHORT).show();
     }
     
     private boolean isAccessibilityEnabled() {
