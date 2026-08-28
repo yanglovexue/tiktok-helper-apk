@@ -93,6 +93,16 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
+        <!-- 悬浮窗开关 -->
+        <CheckBox
+            android:id="@+id/cb_float"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="显示悬浮窗 (进度/统计)"
+            android:textColor="#4fc3f7"
+            android:textSize="12sp"
+            android:layout_marginBottom="8dp" />
+
         <!-- 概率设置 -->
         <TextView
             android:id="@+id/tv_like_chance"
