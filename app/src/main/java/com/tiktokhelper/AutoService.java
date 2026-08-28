@@ -731,6 +731,11 @@ public class AutoService extends AccessibilityService {
         return null;
     }
     
+    private AccessibilityNodeInfo findNodeById(AccessibilityNodeInfo root, String id) {
+        List<AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByViewId(id);
+        return nodes.isEmpty() ? null : nodes.get(0);
+    }
+    
     /**
      * 获取统计信息
      */
