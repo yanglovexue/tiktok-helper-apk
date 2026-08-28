@@ -1,5 +1,8 @@
 package com.tiktokhelper;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.PixelFormat;
@@ -27,6 +30,9 @@ public class FloatingWindowService extends Service {
     public static final String EXTRA_MODE = "mode";
     public static final String EXTRA_TASK = "task";
     public static final String EXTRA_STATS = "stats";
+    
+    private static final int NOTIFICATION_ID = 1001;
+    private static final String CHANNEL_ID = "tiktok_helper_floating";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -36,44 +42,71 @@ public class FloatingWindowService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        createNotificationChannel();
+        startForeground(NOTIFICATION_ID, createNotification());
         showFloatingWindow();
         startUpdating();
     }
 
-    private void showFloatingWindow() {
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        
-        // 创建悬浮窗布局
-        floatingView = LayoutInflater.from(this).inflate(R.layout.floating_window, null);
-        
-        tvMode = floatingView.findViewById(R.id.tv_floating_mode);
-        tvTask = floatingView.findViewById(R.id.tv_floating_task);
-        tvStats = floatingView.findViewById(R.id.tv_floating_stats);
-        
-        // 设置悬浮窗参数
-        int layoutType;
+    private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            layoutType = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        } else {
-            layoutType = WindowManager.LayoutParams.TYPE_PHONE;
+            NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID,
+                "TikTok Helper",
+                NotificationManager.IMPORTANCE_LOW
+            );
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
         }
-        
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        );
-        
-        params.gravity = Gravity.TOP | Gravity.START;
-        params.x = 100;
-        params.y = 100;
-        
-        windowManager.addView(floatingView, params);
-        
-        // 初始更新
-        updateDisplay("准备中...", "等待启动", "视频: 0 | 评论: 0 | 回复: 0");
+    }
+
+    private Notification createNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return new Notification.Builder(this, CHANNEL_ID)
+                .setContentTitle("TikTok Helper")
+                .setContentText("自动化运行中...")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .build();
+        }
+        return new Notification();
+    }
+
+    private void showFloatingWindow() {
+        try {
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+            
+            floatingView = LayoutInflater.from(this).inflate(R.layout.floating_window, null);
+            
+            tvMode = floatingView.findViewById(R.id.tv_floating_mode);
+            tvTask = floatingView.findViewById(R.id.tv_floating_task);
+            tvStats = floatingView.findViewById(R.id.tv_floating_stats);
+            
+            int layoutType;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                layoutType = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+            } else {
+                layoutType = WindowManager.LayoutParams.TYPE_PHONE;
+            }
+            
+            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                layoutType,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT
+            );
+            
+            params.gravity = Gravity.TOP | Gravity.START;
+            params.x = 50;
+            params.y = 100;
+            
+            windowManager.addView(floatingView, params);
+            updateDisplay("准备中...", "等待启动", "视频: 0 | 评论: 0 | 回复: 0");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void startUpdating() {
@@ -81,7 +114,7 @@ public class FloatingWindowService extends Service {
             @Override
             public void run() {
                 updateFromService();
-                handler.postDelayed(this, 1000); // 每秒更新一次
+                handler.postDelayed(this, 1000);
             }
         }, 1000);
     }
@@ -137,7 +170,11 @@ public class FloatingWindowService extends Service {
     public void onDestroy() {
         super.onDestroy();
         if (floatingView != null && windowManager != null) {
-            windowManager.removeView(floatingView);
+            try {
+                windowManager.removeView(floatingView);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         handler.removeCallbacksAndMessages(null);
     }
