@@ -730,6 +730,11 @@ public class AutoService extends AccessibilityService {
         }
         return null;
     }
+    
+    /**
+     * 获取统计信息
+     */
+    public String getStats() {
         long sessionTime = (System.currentTimeMillis() - sessionStartTime) / 1000;
         return "视频: " + videoCount + " | 评论: " + totalComments + " | 回复: " + totalReplies + " | 时长: " + sessionTime + "s";
     }
