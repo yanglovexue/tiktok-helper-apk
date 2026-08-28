@@ -18,6 +18,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -81,8 +83,11 @@ public class AutoService extends AccessibilityService {
     private volatile int totalReplies = 0;
     private volatile long lastActionTime = 0;
     private long sessionStartTime = 0;
-    // 后台任务执行器：将耗时操作移出主线程，避免 ANR
-    private final ExecutorService actionExecutor = Executors.newSingleThreadExecutor();
+    // 后台任务执行器：将耗时操作移出主线程，避免 ANR。有界队列防积压，多余任务直接丢弃
+    private final ExecutorService actionExecutor = new ThreadPoolExecutor(
+        1, 1, 0L, TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<Runnable>(3),
+        new ThreadPoolExecutor.DiscardPolicy());
     
     // ============ 评论内容过滤（排除非评论节点）============
     private static final List<String> COMMENT_SKIP_TEXTS = Arrays.asList(
@@ -121,6 +126,12 @@ public class AutoService extends AccessibilityService {
             return;
         }
         
+        // 安全闸：提交前检查 TikTok 是否在前台
+        if (!isTikTokRoot(rootNode)) {
+            rootNode.recycle();
+            return;
+        }
+        
         // 耗时操作提交到后台单线程执行器执行，避免阻塞主线程导致 ANR
         actionExecutor.submit(() -> {
             try {
@@ -137,6 +148,12 @@ public class AutoService extends AccessibilityService {
      * 执行自动化操作 - 优化版
      */
     private void performActions(AccessibilityNodeInfo rootNode) {
+        // 安全闸：TikTok 不在前台时立即返回，防止队列积压任务在非 TikTok 界面执行
+        if (!isTikTokForeground()) {
+            Log.d(TAG, "跳过操作：TikTok 不在前台");
+            return;
+        }
+        
         // 养号模式：只点赞和浏览
         if (warmUpMode) {
             performWarmUp(rootNode);
@@ -592,9 +609,13 @@ public class AutoService extends AccessibilityService {
     }
     
     /**
-     * 执行滑动
+     * 执行滑动 - 仅当 TikTok 在前台时才执行，避免在其他应用界面误操作
      */
     public void performScroll() {
+        if (!isTikTokForeground()) {
+            Log.d(TAG, "跳过滚动：TikTok 不在前台");
+            return;
+        }
         int width = getResources().getDisplayMetrics().widthPixels;
         int height = getResources().getDisplayMetrics().heightPixels;
         
@@ -621,9 +642,13 @@ public class AutoService extends AccessibilityService {
     }
     
     /**
-     * 双击屏幕点赞
+     * 双击屏幕点赞 - 仅当 TikTok 在前台时才执行
      */
     private boolean performDoubleClick() {
+        if (!isTikTokForeground()) {
+            Log.d(TAG, "跳过双击：TikTok 不在前台");
+            return false;
+        }
         int width = getResources().getDisplayMetrics().widthPixels;
         int height = getResources().getDisplayMetrics().heightPixels;
         
@@ -748,6 +773,31 @@ public class AutoService extends AccessibilityService {
             if (tiktokPkg.equals(pkg)) return true;
         }
         return false;
+    }
+    
+    /**
+     * 检查 TikTok 是否在前台（当前活动窗口的包名是否为 TikTok）
+     * 用于手势操作安全闸，防止在其他应用界面乱点乱滑
+     */
+    private boolean isTikTokForeground() {
+        return isTikTokForegroundPublic();
+    }
+    
+    /**
+     * 公开版本，供 MainActivity 等外部调用
+     */
+    public boolean isTikTokForegroundPublic() {
+        try {
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root == null) return false;
+            try {
+                return isTikTokRoot(root);
+            } finally {
+                root.recycle();
+            }
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     private int getRandomDelay() {
