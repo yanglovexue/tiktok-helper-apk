@@ -986,6 +986,19 @@ public class AutoService extends AccessibilityService {
         return "视频: " + videoCount + " | 评论: " + totalComments + " | 回复: " + totalReplies + " | 时长: " + sessionTime + "s";
     }
     
+    // ============ 统计访问器（供悬浮窗读取）============
+    public int getVideoCount() { return videoCount; }
+    public int getCommentCount() { return totalComments; }
+    public int getReplyCount() { return totalReplies; }
+    
+    /**
+     * 会话已运行秒数
+     */
+    public long getSessionSeconds() {
+        if (sessionStartTime == 0) return 0;
+        return (System.currentTimeMillis() - sessionStartTime) / 1000;
+    }
+    
     @Override
     public void onInterrupt() {
         Log.d(TAG, "服务中断");
