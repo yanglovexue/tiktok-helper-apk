@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#CC000000"
+    android:padding="12dp"
+    android:elevation="8dp">
+
+    <TextView
+        android:id="@+id/tv_floating_mode"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="模式: 准备中..."
+        android:textColor="#00FF00"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/tv_floating_task"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="任务: 等待启动"
+        android:textColor="#FFFF00"
+        android:textSize="12sp"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/tv_floating_stats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="视频: 0 | 评论: 0 | 回复: 0"
+        android:textColor="#FFFFFF"
+        android:textSize="11sp" />
+
+</LinearLayout>
